@@ -9,7 +9,7 @@
     <ProductVersion>10.0.20506</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <RootNamespace></RootNamespace>
-    <ProjectGuid>{E660CE4D-44FA-906F-48C1-3D6257C37AD0}</ProjectGuid>
+    <ProjectGuid>{CC78BF54-B221-16A0-E67C-6CFFF6D08B5B}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <AssemblyName>Assembly-CSharp</AssemblyName>
@@ -56,9 +56,9 @@
     <Analyzer Include="/Applications/Visual Studio.app/Contents/Resources/lib/monodevelop/AddIns/MonoDevelop.Unity/Analyzers/Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets/Scripts/GlobalTypes.cs" />
     <Compile Include="Assets/Scripts/CharacterController2D.cs" />
     <Compile Include="Assets/Scripts/PlayerController.cs" />
-    <Compile Include="Assets/Scripts/GlobalTypes.cs" />
     <Compile Include="Assets/Scripts/GroundEffector.cs" />
   </ItemGroup>
   <ItemGroup>
