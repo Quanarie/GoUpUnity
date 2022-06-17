@@ -24,7 +24,10 @@ public class PlayerController : MonoBehaviour
 
     private Vector2 input;
     private Vector2 moveDirection;
+
     private CharacterController2D characterController;
+
+    public Vector2 MoveDirection { get => moveDirection; }
 
     private void Start()
     {
@@ -33,14 +36,7 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (moveDirection.x < 0)
-        {
-            transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-        }
-        else if (moveDirection.x > 0)
-        {
-            transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-        }
+        flipSprite();
 
         if (IsDashing)
         {
@@ -73,11 +69,7 @@ public class PlayerController : MonoBehaviour
                 moveDirection.x += input.x * acceleration;
                 moveDirection.x = Mathf.Clamp(moveDirection.x, -walkSpeed, walkSpeed);
             }
-           
-        }
 
-        if (!IsDashing)
-        {
             if (characterController.IsOnGround)
             {
                 moveDirection.y = 0f;
@@ -108,6 +100,18 @@ public class PlayerController : MonoBehaviour
         }
 
         characterController.Move(moveDirection * Time.deltaTime);
+    }
+
+    private void flipSprite()
+    {
+        if (moveDirection.x < 0)
+        {
+            transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        }
+        else if (moveDirection.x > 0)
+        {
+            transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+        }
     }
 
     private void applyGravity()
@@ -142,7 +146,7 @@ public class PlayerController : MonoBehaviour
             releasedJump = false;
 
             //Dash part
-            if (IsJumping && CanDash && !characterController.IsOnGround)
+            if (CanDash && !characterController.IsOnGround)
             {
                 StartCoroutine(Dash());
             }
@@ -158,7 +162,9 @@ public class PlayerController : MonoBehaviour
     IEnumerator Dash()
     {
         IsDashing = true;
+        IsJumping = false; //No animation of jump after dash
         yield return new WaitForSeconds(dashTime);
         IsDashing = false;
+        releasedJump = false;
     }
 }
