@@ -7,12 +7,17 @@ public class CharacterController2D : MonoBehaviour
 {
     [SerializeField] private float raycastDistance = 0.1f;
     [SerializeField] private LayerMask layerMask;
+    
+    //Contacts with walls/ceiling/ground
+    public bool IsOnGround { get; private set; }
+    public bool Left { get; private set; }
+    public bool Right { get; private set; }
+    public bool Above { get; private set; }
 
-    private bool isOnGround;
     private bool disableGroundCheck;
     private GroundType groundType;
-
-    public bool IsOnGround() => isOnGround;
+    public bool HitGroundThisFrame { get; private set; }
+    private bool inAirLastFrame;
 
     private Vector2 moveAmount;
     private Vector2 currentPosition;
@@ -21,8 +26,7 @@ public class CharacterController2D : MonoBehaviour
     private new Rigidbody2D rigidbody;
     private new CapsuleCollider2D collider;
 
-    private Vector2[] raycastPositions = new Vector2[3];
-    private RaycastHit2D[] raycastHits = new RaycastHit2D[3];
+    private float slopeAngle;
 
     private void Start()
     {
@@ -30,10 +34,17 @@ public class CharacterController2D : MonoBehaviour
         collider = GetComponent<CapsuleCollider2D>();
     }
 
-    private void FixedUpdate()
+    private void Update()
     {
-        if (moveAmount.x < 0) transform.localScale = new Vector3(-1, 1, 1);
-        else if (moveAmount.x > 0) transform.localScale = new Vector3(1, 1, 1);
+        inAirLastFrame = !IsOnGround;
+
+        if (IsOnGround)
+        {
+            if ((moveAmount.x > 0f && slopeAngle < 0f) || (moveAmount.x < 0f && slopeAngle > 0f))
+            {
+                moveAmount.y = -Mathf.Abs(Mathf.Tan(slopeAngle * Mathf.Deg2Rad) * moveAmount.x);
+            }
+        }
 
         lastPosition = rigidbody.position;
         currentPosition = lastPosition + moveAmount;
@@ -42,6 +53,11 @@ public class CharacterController2D : MonoBehaviour
 
         if (!disableGroundCheck)
             CheckIfGrounded();
+
+        CheckOtherContacts();
+
+        if (IsOnGround && inAirLastFrame) HitGroundThisFrame = true;
+        else HitGroundThisFrame = false;
     }
 
     public void Move(Vector2 movement)
@@ -51,52 +67,42 @@ public class CharacterController2D : MonoBehaviour
 
     private void CheckIfGrounded()
     {
-        Vector2 raycastOrigin = rigidbody.position - new Vector2(0, collider.size.y / 2f);
+        RaycastHit2D hit = Physics2D.CapsuleCast(collider.bounds.center, collider.size,
+                           CapsuleDirection2D.Vertical, 0f, Vector2.down, raycastDistance, layerMask);
 
-        raycastPositions[0] = raycastOrigin + Vector2.left * collider.size.x / 2f;
-        raycastPositions[1] = raycastOrigin;
-        raycastPositions[2] = raycastOrigin + Vector2.right * collider.size.x / 2f;
-
-        DrawDebugRays(Vector2.down, Color.green);
-
-        int numberOfGroundHits = 0;
-
-        for (int i = 0; i < raycastPositions.Length; i++)
+        if (hit.collider)
         {
-            RaycastHit2D hit = Physics2D.Raycast(raycastPositions[i], Vector2.down, raycastDistance, layerMask);
-            if (hit.collider)
-            {
-                raycastHits[i] = hit;
-                numberOfGroundHits++;
-            }
-        }
-        if (numberOfGroundHits > 0)
-        {
-            if (raycastHits[1].collider)
-            {
-                groundType = DetermineGrounType(raycastHits[1].collider);
-            }
-            else
-            {
-                for (int i = 0; i < raycastHits.Length; i++)
-                {
-                    if (raycastHits[i].collider)
-                    {
-                        groundType = DetermineGrounType(raycastHits[i].collider);
-                    }
-                }
-            }
-
-            isOnGround = true;
+            groundType = DetermineGroundType(hit.collider);
+            slopeAngle = slopeAngle = Vector2.SignedAngle(Vector2.up, hit.normal);
+            IsOnGround = true;
         }
         else
         {
             groundType = GroundType.none;
-            isOnGround = false;
+            IsOnGround = false;
         }
     }
 
-    private GroundType DetermineGrounType(Collider2D collider)
+    private void CheckOtherContacts()
+    {
+        RaycastHit2D leftHit = Physics2D.BoxCast(collider.bounds.center, collider.size * 0.75f,
+                               0f, Vector2.left, raycastDistance, layerMask);
+        if (leftHit.collider) Left = true;
+        else Left = false;
+
+        RaycastHit2D rightHit = Physics2D.BoxCast(collider.bounds.center, collider.size * 0.75f,
+                               0f, Vector2.right, raycastDistance, layerMask);
+        if (rightHit.collider) Right = true;
+        else Right = false;
+
+        RaycastHit2D aboveHit = Physics2D.CapsuleCast(collider.bounds.center, collider.size,
+                           CapsuleDirection2D.Vertical, 0f, Vector2.up, raycastDistance, layerMask);
+        if (aboveHit.collider) Above = true;
+        else Above = false;
+
+    }
+
+    private GroundType DetermineGroundType(Collider2D collider)
     {
         if (collider.TryGetComponent(out GroundEffector groundEffector))
         {
@@ -108,19 +114,11 @@ public class CharacterController2D : MonoBehaviour
         }
     }
 
-    private void DrawDebugRays(Vector2 direction, Color color)
-    {
-        for (int i = 0; i < raycastPositions.Length; i++)
-        {
-            Debug.DrawRay(raycastPositions[i], direction * raycastDistance, color);
-        }
-    }
-
     public void DisableGroundCheck()
     {
-        isOnGround = false;
+        IsOnGround = false;
         disableGroundCheck = true;
-        StartCoroutine("EnableGroundCheck");
+        StartCoroutine(EnableGroundCheck());
     }
 
     IEnumerator EnableGroundCheck()
